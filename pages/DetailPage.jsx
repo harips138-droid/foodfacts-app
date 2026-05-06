@@ -1,60 +1,42 @@
-import { useParams, useNavigate } from "react-router-dom"
-import { useEffect, useState } from "react"
-import axios from "axios"
+import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { Button, Typography } from "@mui/material";
+import { useDispatch, useSelector } from "react-redux";
+import { addItem, removeItem } from "../store/savedSlice";
 
-function DetailPage({ saved, dispatch }) {
-  const { barcode } = useParams()
-  const navigate = useNavigate()
+const DetailPage = () => {
+  const { code } = useParams();
+  const [product, setProduct] = useState(null);
 
-  const [product, setProduct] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const dispatch = useDispatch();
+  const saved = useSelector((state) => state.saved.items);
+
+  const isSaved = saved.find((item) => item.code === code);
 
   useEffect(() => {
-    let cancelled = false
+    axios
+      .get(`https://world.openfoodfacts.org/api/v0/product/${code}.json`)
+      .then((res) => setProduct(res.data.product));
+  }, [code]);
 
-    const fetchProduct = async () => {
-      try {
-        const res = await axios.get(
-          `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`
-        )
-        if (!cancelled) setProduct(res.data.product)
-      } catch (err) {
-        console.error(err)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    fetchProduct()
-
-    return () => {
-      cancelled = true
-    }
-  }, [barcode])
-
-  if (loading) return <p>Loading...</p>
-
-  const isSaved = saved.some((p) => p.code === barcode)
+  if (!product) return <p>Loading...</p>;
 
   return (
-    <div>
-      <button onClick={() => navigate(-1)}>Back</button>
+    <>
+      <Typography variant="h4">{product.product_name}</Typography>
 
-      <h2>{product.product_name}</h2>
-
-      <button
+      <Button
         onClick={() =>
-          dispatch({
-            type: isSaved ? "REMOVE" : "ADD",
-            product,
-            code: barcode,
-          })
+          isSaved
+            ? dispatch(removeItem(code))
+            : dispatch(addItem(product))
         }
       >
         {isSaved ? "Remove" : "Save"}
-      </button>
-    </div>
-  )
-}
+      </Button>
+    </>
+  );
+};
 
-export default DetailPage
+export default DetailPage;
